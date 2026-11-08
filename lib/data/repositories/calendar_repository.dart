@@ -16,21 +16,29 @@ class CalendarRepository {
     DateTime? from,
     DateTime? to,
     String timezone = 'Asia/Seoul',
-    int maxResults = 250,
+    int maxResults = 2500,
   }) async {
     final now = nowInTimezone(timezone);
     final start = from ?? now.subtract(const Duration(days: 30));
     final end = to ?? now.add(const Duration(days: 90));
 
-    final result = await _api.events.list(
-      'primary',
-      timeMin: start.toUtc(),
-      timeMax: end.toUtc(),
-      maxResults: maxResults,
-      singleEvents: true,
-      orderBy: 'startTime',
-    );
-    return result.items ?? [];
+    final events = <goog_cal.Event>[];
+    String? pageToken;
+    do {
+      final result = await _api.events.list(
+        'primary',
+        timeMin: start.toUtc(),
+        timeMax: end.toUtc(),
+        maxResults: maxResults.clamp(1, 2500),
+        pageToken: pageToken,
+        singleEvents: true,
+        orderBy: 'startTime',
+      );
+      events.addAll(result.items ?? const []);
+      pageToken = result.nextPageToken;
+    } while (pageToken != null);
+
+    return events;
   }
 
   Future<goog_cal.Event> createEvent({

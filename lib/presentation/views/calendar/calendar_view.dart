@@ -148,6 +148,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             border: Border.all(color: themeColor, width: 2),
                             borderRadius: BorderRadius.circular(4),
                           ),
+                          onViewChanged: (details) =>
+                              _loadVisibleEvents(details, timezone),
                           onTap: (details) =>
                               _onTap(context, ref, details, events),
                         ),
@@ -197,6 +199,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   void _changeMode(_ViewMode mode) {
     if (_mode == mode) return;
     setState(() => _mode = mode);
+  }
+
+  void _loadVisibleEvents(ViewChangedDetails details, String timezone) {
+    final visibleDates = details.visibleDates;
+    if (visibleDates.isEmpty) return;
+    final first = visibleDates.first;
+    final last = visibleDates.last;
+    final from = wallTimeInTimezone(
+      DateTime(first.year, first.month, first.day),
+      timezone,
+    );
+    final to = wallTimeInTimezone(
+      DateTime(last.year, last.month, last.day).add(const Duration(days: 1)),
+      timezone,
+    );
+    ref.read(calendarEventsProvider.notifier).loadVisibleRange(
+          from: from,
+          to: to,
+        );
   }
 
   void _onTap(
