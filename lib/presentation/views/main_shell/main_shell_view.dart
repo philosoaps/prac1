@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../viewmodels/app_viewmodel.dart';
+import '../../../core/utils/app_timezone.dart';
 import '../../widgets/settings/settings_drawer.dart';
 import '../calendar/calendar_view.dart';
 import '../tasks/tasks_view.dart';
@@ -21,7 +22,7 @@ class MainShellView extends ConsumerWidget {
     final navIndex = ref.watch(navIndexProvider);
     final settings = ref.watch(settingsProvider).value;
     final isKo = settings?.language != 'en';
-    final today = DateTime.now();
+    final today = nowInTimezone(settings?.timezone ?? 'Asia/Seoul');
 
     return Scaffold(
       appBar: AppBar(
@@ -34,9 +35,7 @@ class MainShellView extends ConsumerWidget {
           ),
         ),
         title: Text(
-          isKo
-              ? '${today.month}월 ${today.day}일'
-              : _monthLabel(today),
+          isKo ? '${today.month}월 ${today.day}일' : _monthLabel(today),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -102,8 +101,18 @@ class MainShellView extends ConsumerWidget {
 
   String _monthLabel(DateTime d) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[d.month - 1]} ${d.day}';
   }

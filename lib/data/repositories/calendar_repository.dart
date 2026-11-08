@@ -3,6 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/utils/app_timezone.dart';
+import '../models/time_category_model.dart';
+
 /// Google Calendar API 접근 레이어
 class CalendarRepository {
   final goog_cal.CalendarApi _api;
@@ -12,10 +15,12 @@ class CalendarRepository {
   Future<List<goog_cal.Event>> fetchEvents({
     DateTime? from,
     DateTime? to,
+    String timezone = 'Asia/Seoul',
     int maxResults = 250,
   }) async {
-    final start = from ?? DateTime.now().subtract(const Duration(days: 30));
-    final end = to ?? DateTime.now().add(const Duration(days: 90));
+    final now = nowInTimezone(timezone);
+    final start = from ?? now.subtract(const Duration(days: 30));
+    final end = to ?? now.add(const Duration(days: 90));
 
     final result = await _api.events.list(
       'primary',
@@ -33,17 +38,25 @@ class CalendarRepository {
     String? description,
     required DateTime start,
     required DateTime end,
+    String timezone = 'Asia/Seoul',
+    String? colorId,
     bool isAllDay = false,
   }) async {
     final event = goog_cal.Event(
       summary: summary,
       description: description,
-       start: isAllDay
-           ? goog_cal.EventDateTime(date: DateTime(start.year, start.month, start.day))
-           : goog_cal.EventDateTime(dateTime: start.toUtc()),
-       end: isAllDay
-           ? goog_cal.EventDateTime(date: DateTime(end.year, end.month, end.day))
-           : goog_cal.EventDateTime(dateTime: end.toUtc()),
+      colorId: colorId,
+      start: isAllDay
+          ? goog_cal.EventDateTime(
+              date: DateTime(start.year, start.month, start.day))
+          : goog_cal.EventDateTime(
+              dateTime: wallTimeInTimezone(start, timezone).toUtc(),
+            ),
+      end: isAllDay
+          ? goog_cal.EventDateTime(date: DateTime(end.year, end.month, end.day))
+          : goog_cal.EventDateTime(
+              dateTime: wallTimeInTimezone(end, timezone).toUtc(),
+            ),
     );
     return await _api.events.insert(event, 'primary');
   }
@@ -55,35 +68,40 @@ class CalendarRepository {
 /// Google Calendar Event → Syncfusion Appointment 변환 어댑터
 class GoogleCalendarDataSource extends CalendarDataSource {
   final Color eventColor;
+  final String timezone;
 
   GoogleCalendarDataSource(List<goog_cal.Event> events,
-      {this.eventColor = Colors.indigo}) {
+      {this.eventColor = Colors.indigo, this.timezone = 'Asia/Seoul'}) {
     appointments = events
-        .map((e) => _toAppointment(e, eventColor))
+        .map((e) => _toAppointment(e, eventColor, timezone))
         .whereType<Appointment>()
         .toList();
   }
 
-  static Appointment? _toAppointment(goog_cal.Event e, Color color) {
+  static Appointment? _toAppointment(
+    goog_cal.Event e,
+    Color color,
+    String timezone,
+  ) {
     DateTime start;
     DateTime end;
     bool isAllDay = false;
 
     if (e.start?.dateTime != null) {
-      start = e.start!.dateTime!.toLocal();
-     } else if (e.start?.date != null) {
-       start = e.start!.date!.toLocal();
-       isAllDay = true;
-     } else {
+      start = dateInTimezone(e.start!.dateTime!, timezone);
+    } else if (e.start?.date != null) {
+      start = wallTimeInTimezone(e.start!.date!, timezone);
+      isAllDay = true;
+    } else {
       return null;
     }
 
     if (e.end?.dateTime != null) {
-      end = e.end!.dateTime!.toLocal();
-     } else if (e.end?.date != null) {
-       end = e.end!.date!.toLocal();
-       isAllDay = true;
-     } else {
+      end = dateInTimezone(e.end!.dateTime!, timezone);
+    } else if (e.end?.date != null) {
+      end = wallTimeInTimezone(e.end!.date!, timezone);
+      isAllDay = true;
+    } else {
       end = start.add(const Duration(hours: 1));
     }
 
@@ -94,7 +112,14 @@ class GoogleCalendarDataSource extends CalendarDataSource {
       subject: e.summary ?? '(제목 없음)',
       notes: e.description,
       isAllDay: isAllDay,
-      color: color,
+      color: _eventColor(e.colorId, color),
     );
+  }
+
+  static Color _eventColor(String? colorId, Color fallback) {
+    for (final category in TimeCategory.values) {
+      if (category.googleColorId == colorId) return category.color;
+    }
+    return fallback;
   }
 }

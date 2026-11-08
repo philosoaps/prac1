@@ -6,8 +6,8 @@ import '../viewmodels/app_viewmodel.dart';
 // ──────────────────────────────────────────────────────
 // Calendar ViewModel
 // ──────────────────────────────────────────────────────
-final calendarEventsProvider =
-    AsyncNotifierProvider.autoDispose<CalendarEventsNotifier, List<goog_cal.Event>>(
+final calendarEventsProvider = AsyncNotifierProvider.autoDispose<
+    CalendarEventsNotifier, List<goog_cal.Event>>(
   CalendarEventsNotifier.new,
 );
 
@@ -16,7 +16,9 @@ class CalendarEventsNotifier extends AsyncNotifier<List<goog_cal.Event>> {
   Future<List<goog_cal.Event>> build() async {
     final repo = ref.watch(calendarRepositoryProvider);
     if (repo == null) return [];
-    return await repo.fetchEvents();
+    final timezone =
+        ref.watch(settingsProvider).value?.timezone ?? 'Asia/Seoul';
+    return await repo.fetchEvents(timezone: timezone);
   }
 
   Future<void> refresh() async {
@@ -24,7 +26,9 @@ class CalendarEventsNotifier extends AsyncNotifier<List<goog_cal.Event>> {
     state = await AsyncValue.guard(() async {
       final repo = ref.read(calendarRepositoryProvider);
       if (repo == null) return [];
-      return await repo.fetchEvents();
+      final timezone =
+          ref.read(settingsProvider).value?.timezone ?? 'Asia/Seoul';
+      return await repo.fetchEvents(timezone: timezone);
     });
   }
 
@@ -33,11 +37,19 @@ class CalendarEventsNotifier extends AsyncNotifier<List<goog_cal.Event>> {
     String? description,
     required DateTime start,
     required DateTime end,
+    required String timezone,
+    String? colorId,
   }) async {
     final repo = ref.read(calendarRepositoryProvider);
     if (repo == null) return;
     await repo.createEvent(
-        summary: summary, description: description, start: start, end: end);
+      summary: summary,
+      description: description,
+      start: start,
+      end: end,
+      timezone: timezone,
+      colorId: colorId,
+    );
     await refresh();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/app_settings_model.dart';
+import '../../../data/models/time_category_model.dart';
 import '../../viewmodels/app_viewmodel.dart';
 
 /// 앱 설정 Drawer (햄버거 메뉴 패널)
@@ -13,6 +14,7 @@ class SettingsDrawer extends ConsumerWidget {
     final settingsAsync = ref.watch(settingsProvider);
     final settings = settingsAsync.value ?? const AppSettingsModel();
     final notifier = ref.read(settingsProvider.notifier);
+    final isKo = settings.language != 'en';
 
     return Drawer(
       child: SafeArea(
@@ -30,7 +32,7 @@ class SettingsDrawer extends ConsumerWidget {
             const Divider(),
 
             // ── 1. 테마 색상 (3×3) ──
-            const _SectionLabel('테마 색상'),
+            _SectionLabel(isKo ? '앱 테마 색상' : 'App theme color'),
             const SizedBox(height: 8),
             GridView.builder(
               shrinkWrap: true,
@@ -44,7 +46,8 @@ class SettingsDrawer extends ConsumerWidget {
               itemCount: AppThemeColors.palette.length,
               itemBuilder: (ctx, i) {
                 final item = AppThemeColors.palette[i];
-                final selected = settings.themeColor.toARGB32() == item.color.toARGB32();
+                final selected =
+                    settings.themeColor.toARGB32() == item.color.toARGB32();
                 return GestureDetector(
                   onTap: () => notifier.setThemeColor(item.color),
                   child: AnimatedContainer(
@@ -53,19 +56,25 @@ class SettingsDrawer extends ConsumerWidget {
                       color: item.color,
                       borderRadius: BorderRadius.circular(10),
                       border: selected
-                          ? Border.all(color: Colors.white, width: 3)
+                          ? Border.all(color: Colors.black87, width: 2)
                           : null,
                       boxShadow: selected
-                          ? [BoxShadow(color: item.color.withAlpha(130), blurRadius: 8, spreadRadius: 2)]
+                          ? [
+                              BoxShadow(
+                                  color: item.color.withAlpha(130),
+                                  blurRadius: 8,
+                                  spreadRadius: 2)
+                            ]
                           : [],
                     ),
                     alignment: Alignment.center,
                     child: selected
-                        ? const Icon(Icons.check, color: Colors.white, size: 20)
+                        ? const Icon(Icons.check,
+                            color: Colors.black87, size: 20)
                         : Text(
                             item.label,
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Colors.black87,
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
@@ -78,14 +87,42 @@ class SettingsDrawer extends ConsumerWidget {
             const SizedBox(height: 20),
             const Divider(),
 
+            _SectionLabel(isKo ? '시간 카테고리' : 'Time categories'),
+            const SizedBox(height: 4),
+            ...TimeCategory.values.map(
+              (category) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  radius: 11,
+                  backgroundColor: category.color,
+                  child: Icon(
+                    Icons.circle,
+                    size: 8,
+                    color: category.color.computeLuminance() > 0.55
+                        ? Colors.black
+                        : Colors.white,
+                  ),
+                ),
+                title: Text(isKo ? category.labelKo : category.labelEn),
+              ),
+            ),
+            const Divider(),
+
             // ── 2. 첫 요일 ──
-            const _SectionLabel('주의 첫 번째 날'),
+            _SectionLabel(isKo ? '주의 첫 번째 날' : 'First day of week'),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(settings.startOnSunday ? '일요일 시작' : '월요일 시작'),
+              title: Text(settings.startOnSunday
+                  ? (isKo ? '일요일 시작' : 'Sunday start')
+                  : (isKo ? '월요일 시작' : 'Monday start')),
               subtitle: Text(settings.startOnSunday
-                  ? '달력이 일요일부터 시작됩니다'
-                  : '달력이 월요일부터 시작됩니다'),
+                  ? (isKo
+                      ? '달력이 일요일부터 시작됩니다'
+                      : 'Calendar weeks start on Sunday')
+                  : (isKo
+                      ? '달력이 월요일부터 시작됩니다'
+                      : 'Calendar weeks start on Monday')),
               value: settings.startOnSunday,
               activeThumbColor: settings.themeColor,
               onChanged: (v) => notifier.setStartOnSunday(v),
@@ -93,7 +130,7 @@ class SettingsDrawer extends ConsumerWidget {
             const Divider(),
 
             // ── 3. 타임존 ──
-            const _SectionLabel('타임존'),
+            _SectionLabel(isKo ? '타임존' : 'Time zone'),
             DropdownButtonFormField<String>(
               initialValue: settings.timezone,
               decoration: const InputDecoration(
@@ -103,7 +140,9 @@ class SettingsDrawer extends ConsumerWidget {
                     EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               items: _timezones.map((tz) {
-                return DropdownMenuItem(value: tz, child: Text(tz, overflow: TextOverflow.ellipsis));
+                return DropdownMenuItem(
+                    value: tz,
+                    child: Text(tz, overflow: TextOverflow.ellipsis));
               }).toList(),
               onChanged: (v) {
                 if (v != null) notifier.setTimezone(v);
@@ -113,7 +152,7 @@ class SettingsDrawer extends ConsumerWidget {
             const Divider(),
 
             // ── 4. 언어 ──
-            const _SectionLabel('언어'),
+            _SectionLabel(isKo ? '언어' : 'Language'),
             Row(
               children: [
                 _LangChip(

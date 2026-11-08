@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:timezone/data/latest.dart' as timezone_data;
 
 import 'core/theme/app_theme.dart';
 import 'presentation/viewmodels/app_viewmodel.dart';
 import 'presentation/views/auth/login_view.dart';
 import 'presentation/views/main_shell/main_shell_view.dart';
 
-
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  timezone_data.initializeTimeZones();
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -20,7 +20,7 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.watch(settingsProvider);
     final settings = settingsAsync.value;
-    final themeColor = settings?.themeColor ?? const Color(0xFF3F51B5);
+    final themeColor = settings?.themeColor ?? const Color(0xFF80CBC4);
 
     return MaterialApp(
       title: 'My Life Planner',
