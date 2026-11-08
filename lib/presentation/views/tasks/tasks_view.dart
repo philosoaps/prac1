@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/app_timezone.dart';
+import '../../viewmodels/app_viewmodel.dart';
 import '../../viewmodels/tasks_viewmodel.dart';
 import '../../../data/models/task_model.dart';
+import '../../widgets/schedule_task_composer.dart';
 
 /// Google Tasks 화면
 class TasksView extends ConsumerWidget {
@@ -31,7 +34,7 @@ class TasksView extends ConsumerWidget {
           ),
         ),
         data: (tasks) => tasks.isEmpty
-            ? _EmptyState(onAdd: () => _showAddTaskDialog(context, ref))
+            ? _EmptyState(onAdd: () => _showEntryMenu(context, ref))
             : RefreshIndicator(
                 onRefresh: () => ref.refresh(tasksProvider.future),
                 child: ListView.builder(
@@ -44,15 +47,18 @@ class TasksView extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         heroTag: 'tasks_fab',
         child: const Icon(Icons.add),
-        onPressed: () => _showAddTaskDialog(context, ref),
+        onPressed: () => _showEntryMenu(context, ref),
       ),
     );
   }
 
-  void _showAddTaskDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+  void _showEntryMenu(BuildContext context, WidgetRef ref) {
+    final timezone = ref.read(settingsProvider).value?.timezone ?? 'Asia/Seoul';
+    showScheduleTaskEntryMenu(
       context: context,
-      builder: (_) => _AddTaskDialog(ref: ref),
+      ref: ref,
+      initialDate: nowInTimezone(timezone),
+      timezone: timezone,
     );
   }
 }
@@ -94,15 +100,28 @@ class _TaskTile extends ConsumerWidget {
         );
       },
       onDismissed: (_) => notifier.deleteTask(task.id),
-      child: CheckboxListTile(
-        value: task.isCompleted,
-        onChanged: (v) =>
-            notifier.toggleCompleted(task.id, task.isCompleted),
+      child: ListTile(
+        leading: Checkbox(
+          value: task.isCompleted,
+          onChanged: (_) => notifier.toggleCompleted(task.id, task.isCompleted),
+        ),
+        onTap: () {
+          final timezone =
+              ref.read(settingsProvider).value?.timezone ?? 'Asia/Seoul';
+          showDialog<void>(
+            context: context,
+            builder: (_) => ScheduleTaskComposer(
+              initialDate: task.due ?? nowInTimezone(timezone),
+              timezone: timezone,
+              initialType: ScheduleTaskEntryType.task,
+              task: task,
+            ),
+          );
+        },
         title: Text(
           task.title,
           style: TextStyle(
-            decoration:
-                task.isCompleted ? TextDecoration.lineThrough : null,
+            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
             color: task.isCompleted ? Colors.grey : null,
           ),
         ),
@@ -119,7 +138,7 @@ class _TaskTile extends ConsumerWidget {
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   )
                 : null),
-        secondary: IconButton(
+        trailing: IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.grey),
           onPressed: () => notifier.deleteTask(task.id),
         ),
@@ -128,8 +147,8 @@ class _TaskTile extends ConsumerWidget {
   }
 
   String _formatDate(DateTime dt) {
-    final l = dt.toLocal();
-    return '${l.month}/${l.day}';
+    final due = dt.toUtc();
+    return '${due.month}/${due.day}';
   }
 }
 
@@ -144,8 +163,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.checklist_rounded, size: 64,
-              color: Colors.grey.shade300),
+          Icon(Icons.checklist_rounded, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 12),
           Text('할 일이 없습니다',
               style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
@@ -158,84 +176,5 @@ class _EmptyState extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-// ── 할 일 추가 다이얼로그 ─────────────────────────────────
-class _AddTaskDialog extends StatefulWidget {
-  final WidgetRef ref;
-  const _AddTaskDialog({required this.ref});
-
-  @override
-  State<_AddTaskDialog> createState() => _AddTaskDialogState();
-}
-
-class _AddTaskDialogState extends State<_AddTaskDialog> {
-  final _titleCtrl = TextEditingController();
-  final _notesCtrl = TextEditingController();
-  bool _loading = false;
-
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _notesCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('새 할 일'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _titleCtrl,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: '제목 *',
-              border: OutlineInputBorder(),
-            ),
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _notesCtrl,
-            decoration: const InputDecoration(
-              labelText: '메모 (선택)',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 3,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('취소'),
-        ),
-        _loading
-            ? const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(
-                    width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-              )
-            : FilledButton(
-                onPressed: _submit,
-                child: const Text('추가'),
-              ),
-      ],
-    );
-  }
-
-  Future<void> _submit() async {
-    final title = _titleCtrl.text.trim();
-    if (title.isEmpty) return;
-    setState(() => _loading = true);
-    await widget.ref.read(tasksProvider.notifier).createTask(
-          title: title,
-          notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
-        );
-    if (mounted) Navigator.pop(context);
   }
 }

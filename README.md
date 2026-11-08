@@ -23,13 +23,18 @@ from the UI.
 
 ## Calendar and preferences
 
-The calendar opens by default and supports month, week, and day views. Swipe
-up to expand from day to week to month, or down to move to a narrower view.
+The calendar opens by default and supports month, week, day, and continuous
+schedule views. All views share an eight-column layout with a week-number rail.
+Horizontal swipes move by week; vertical swipes move the week/day schedule
+views, while continuous schedules load in two-week ranges.
 Calendar preferences include a 3x3 app-theme palette, week start day, time
 zone, language, and five color-coded time categories. The selected time zone
-is used for calendar display and event creation. New calendar events can be
-assigned a category, and their category is stored as the Google Calendar event
-color.
+is used for calendar display and schedule creation. The shared schedule/task
+composer offers simple and detailed modes. Every schedule requires an active
+Google Task and stores its ID and name in the event's private extended
+properties. Detailed schedules also support descriptions, locations,
+categories, recurrence, availability, and visibility. Tasks support optional
+due dates and detailed notes.
 
 The Life Goal screen is available from the app menu and saves its content to
 Google Drive's app data folder.

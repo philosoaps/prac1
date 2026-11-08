@@ -4,6 +4,7 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/utils/app_timezone.dart';
+import '../models/schedule_task_link.dart';
 import '../models/time_category_model.dart';
 
 /// Google Calendar API 접근 레이어
@@ -43,30 +44,87 @@ class CalendarRepository {
 
   Future<goog_cal.Event> createEvent({
     required String summary,
-    String? description,
+    required ScheduleTaskLink relatedTask,
     required DateTime start,
     required DateTime end,
     String timezone = 'Asia/Seoul',
     String? colorId,
+    String? description,
+    String? location,
+    String? recurrence,
+    String transparency = 'opaque',
+    String visibility = 'private',
     bool isAllDay = false,
   }) async {
     final event = goog_cal.Event(
       summary: summary,
       description: description,
+      location: location,
       colorId: colorId,
+      transparency: transparency,
+      visibility: visibility,
+      recurrence: recurrence == null ? null : ['RRULE:FREQ=$recurrence'],
+      extendedProperties: goog_cal.EventExtendedProperties(
+        private: relatedTask.toPrivateProperties(),
+      ),
       start: isAllDay
           ? goog_cal.EventDateTime(
               date: DateTime(start.year, start.month, start.day))
           : goog_cal.EventDateTime(
               dateTime: wallTimeInTimezone(start, timezone).toUtc(),
+              timeZone: timezone,
             ),
       end: isAllDay
           ? goog_cal.EventDateTime(date: DateTime(end.year, end.month, end.day))
           : goog_cal.EventDateTime(
               dateTime: wallTimeInTimezone(end, timezone).toUtc(),
+              timeZone: timezone,
             ),
     );
     return await _api.events.insert(event, 'primary');
+  }
+
+  Future<goog_cal.Event> updateEvent({
+    required String eventId,
+    required String summary,
+    required ScheduleTaskLink relatedTask,
+    required DateTime start,
+    required DateTime end,
+    required String timezone,
+    required bool isAllDay,
+    required bool isBusy,
+    required String visibility,
+    required String? colorId,
+    required List<String>? recurrence,
+    required String? description,
+    required String? location,
+  }) async {
+    final event = goog_cal.Event(
+      summary: summary,
+      description: description,
+      location: location,
+      colorId: colorId,
+      transparency: isBusy ? 'opaque' : 'transparent',
+      visibility: visibility,
+      recurrence: recurrence,
+      extendedProperties: goog_cal.EventExtendedProperties(
+        private: relatedTask.toPrivateProperties(),
+      ),
+      start: isAllDay
+          ? goog_cal.EventDateTime(
+              date: DateTime(start.year, start.month, start.day))
+          : goog_cal.EventDateTime(
+              dateTime: wallTimeInTimezone(start, timezone).toUtc(),
+              timeZone: timezone,
+            ),
+      end: isAllDay
+          ? goog_cal.EventDateTime(date: DateTime(end.year, end.month, end.day))
+          : goog_cal.EventDateTime(
+              dateTime: wallTimeInTimezone(end, timezone).toUtc(),
+              timeZone: timezone,
+            ),
+    );
+    return _api.events.patch(event, 'primary', eventId);
   }
 
   Future<void> deleteEvent(String eventId) =>

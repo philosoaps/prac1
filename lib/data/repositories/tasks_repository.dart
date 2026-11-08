@@ -9,14 +9,21 @@ class TasksRepository {
 
   TasksRepository(http.Client client) : _api = goog_tasks.TasksApi(client);
 
-  Future<List<TaskModel>> fetchTasks({int maxResults = 50}) async {
-    final result = await _api.tasks.list(
-      '@default',
-      maxResults: maxResults,
-      showCompleted: true,
-      showHidden: true,
-    );
-    return (result.items ?? []).map(TaskModel.fromGoogleTask).toList();
+  Future<List<TaskModel>> fetchTasks({int maxResults = 100}) async {
+    final tasks = <TaskModel>[];
+    String? pageToken;
+    do {
+      final result = await _api.tasks.list(
+        '@default',
+        maxResults: maxResults.clamp(1, 100),
+        pageToken: pageToken,
+        showCompleted: true,
+        showHidden: true,
+      );
+      tasks.addAll((result.items ?? []).map(TaskModel.fromGoogleTask));
+      pageToken = result.nextPageToken;
+    } while (pageToken != null);
+    return tasks;
   }
 
   Future<TaskModel> createTask({
@@ -27,10 +34,32 @@ class TasksRepository {
     final task = goog_tasks.Task(
       title: title,
       notes: notes,
-      due: due?.toUtc().toIso8601String(),
+      due: due == null
+          ? null
+          : DateTime.utc(due.year, due.month, due.day).toIso8601String(),
     );
     final created = await _api.tasks.insert(task, '@default');
     return TaskModel.fromGoogleTask(created);
+  }
+
+  Future<TaskModel> updateTask({
+    required String taskId,
+    required String title,
+    String? notes,
+    DateTime? due,
+  }) async {
+    final updated = await _api.tasks.patch(
+      goog_tasks.Task(
+        title: title,
+        notes: notes,
+        due: due == null
+            ? null
+            : DateTime.utc(due.year, due.month, due.day).toIso8601String(),
+      ),
+      '@default',
+      taskId,
+    );
+    return TaskModel.fromGoogleTask(updated);
   }
 
   Future<TaskModel> toggleCompleted({

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../viewmodels/app_viewmodel.dart';
 import '../../../core/utils/app_timezone.dart';
+import '../../viewmodels/calendar_viewmodel.dart';
 import '../../widgets/settings/settings_drawer.dart';
 import '../calendar/calendar_view.dart';
 import '../tasks/tasks_view.dart';
@@ -22,7 +23,11 @@ class MainShellView extends ConsumerWidget {
     final navIndex = ref.watch(navIndexProvider);
     final settings = ref.watch(settingsProvider).value;
     final isKo = settings?.language != 'en';
-    final today = nowInTimezone(settings?.timezone ?? 'Asia/Seoul');
+    final timezone = settings?.timezone ?? 'Asia/Seoul';
+    final selectedDate = dateInTimezone(
+      ref.watch(selectedCalendarDateProvider),
+      timezone,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -35,11 +40,23 @@ class MainShellView extends ConsumerWidget {
           ),
         ),
         title: Text(
-          isKo ? '${today.month}월 ${today.day}일' : _monthLabel(today),
+          isKo
+              ? '${selectedDate.year}년 ${selectedDate.month}월 ${selectedDate.day}일'
+              : _monthLabel(selectedDate),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: isKo ? '오늘로 이동' : 'Go to today',
+            icon: const Icon(Icons.today_outlined),
+            onPressed: () {
+              ref
+                  .read(selectedCalendarDateProvider.notifier)
+                  .select(nowInTimezone(timezone));
+              ref.read(navIndexProvider.notifier).setIndex(1);
+            },
+          ),
           // 3-dot 메뉴 → Life Goal 이동
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -90,8 +107,8 @@ class MainShellView extends ConsumerWidget {
             label: isKo ? '할 일' : 'Tasks',
           ),
           NavigationDestination(
-            icon: _CalendarIcon(day: today.day, selected: false),
-            selectedIcon: _CalendarIcon(day: today.day, selected: true),
+            icon: _CalendarIcon(day: selectedDate.day, selected: false),
+            selectedIcon: _CalendarIcon(day: selectedDate.day, selected: true),
             label: isKo ? '캘린더' : 'Calendar',
           ),
         ],

@@ -2,7 +2,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:googleapis/calendar/v3.dart' as goog_cal;
 
 import '../../data/repositories/calendar_repository.dart';
+import '../../data/models/schedule_task_link.dart';
 import '../viewmodels/app_viewmodel.dart';
+
+class SelectedCalendarDateNotifier extends Notifier<DateTime> {
+  @override
+  DateTime build() => DateTime.now();
+
+  void select(DateTime date) => state = date;
+}
+
+final selectedCalendarDateProvider =
+    NotifierProvider<SelectedCalendarDateNotifier, DateTime>(
+  SelectedCalendarDateNotifier.new,
+);
 
 // ──────────────────────────────────────────────────────
 // Calendar ViewModel
@@ -82,21 +95,68 @@ class CalendarEventsNotifier extends AsyncNotifier<List<goog_cal.Event>> {
 
   Future<void> createEvent({
     required String summary,
-    String? description,
+    required ScheduleTaskLink relatedTask,
     required DateTime start,
     required DateTime end,
     required String timezone,
     String? colorId,
+    String? description,
+    String? location,
+    String? recurrence,
+    String transparency = 'opaque',
+    String visibility = 'private',
+    bool isAllDay = false,
   }) async {
     final repo = ref.read(calendarRepositoryProvider);
     if (repo == null) return;
     await repo.createEvent(
       summary: summary,
+      relatedTask: relatedTask,
       description: description,
       start: start,
       end: end,
       timezone: timezone,
       colorId: colorId,
+      location: location,
+      recurrence: recurrence,
+      transparency: transparency,
+      visibility: visibility,
+      isAllDay: isAllDay,
+    );
+    await refresh();
+  }
+
+  Future<void> updateEvent({
+    required String eventId,
+    required String summary,
+    required ScheduleTaskLink relatedTask,
+    required DateTime start,
+    required DateTime end,
+    required String timezone,
+    required bool isAllDay,
+    required bool isBusy,
+    required String visibility,
+    required String? colorId,
+    required List<String>? recurrence,
+    required String? description,
+    required String? location,
+  }) async {
+    final repo = ref.read(calendarRepositoryProvider);
+    if (repo == null) return;
+    await repo.updateEvent(
+      eventId: eventId,
+      summary: summary,
+      relatedTask: relatedTask,
+      start: start,
+      end: end,
+      timezone: timezone,
+      isAllDay: isAllDay,
+      isBusy: isBusy,
+      visibility: visibility,
+      colorId: colorId,
+      recurrence: recurrence,
+      description: description,
+      location: location,
     );
     await refresh();
   }

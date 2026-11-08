@@ -28,11 +28,32 @@ class TasksNotifier extends AsyncNotifier<List<TaskModel>> {
     });
   }
 
-  Future<void> createTask({required String title, String? notes}) async {
+  Future<TaskModel?> createTask({
+    required String title,
+    String? notes,
+    DateTime? due,
+  }) async {
+    final repo = ref.read(tasksRepositoryProvider);
+    if (repo == null) return null;
+    final created = await repo.createTask(title: title, notes: notes, due: due);
+    await refresh();
+    return created;
+  }
+
+  Future<void> updateTask({
+    required String taskId,
+    required String title,
+    String? notes,
+    DateTime? due,
+  }) async {
     final repo = ref.read(tasksRepositoryProvider);
     if (repo == null) return;
-    final due = DateTime.now().add(const Duration(days: 1));
-    await repo.createTask(title: title, notes: notes, due: due);
+    await repo.updateTask(
+      taskId: taskId,
+      title: title,
+      notes: notes,
+      due: due,
+    );
     await refresh();
   }
 
